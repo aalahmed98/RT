@@ -1,0 +1,20 @@
+# PPM image files
+*.ppm
+
+# Rust build artifacts
+/target/
+
+# Cargo lock file (uncomment if you want to ignore it)
+# Cargo.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+

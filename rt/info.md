@@ -1,0 +1,1 @@
+ - use this command to run the code and generate images -> "cargo run > image.ppm"

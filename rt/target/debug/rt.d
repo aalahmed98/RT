@@ -1,0 +1,1 @@
+C:\Users\nutsu\Desktop\Coding\rt\rt\target\debug\rt.exe: C:\Users\nutsu\Desktop\Coding\rt\rt\src\color.rs C:\Users\nutsu\Desktop\Coding\rt\rt\src\main.rs C:\Users\nutsu\Desktop\Coding\rt\rt\src\vec3.rs

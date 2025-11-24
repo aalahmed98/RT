@@ -1,7 +1,9 @@
+use std::ops::{Mul, Add};
+
 pub struct Color {
-    r: f64,
-    g: f64,
-    b: f64
+    pub r: f64,
+    pub g: f64,
+    pub b: f64
 }
 
 impl Color {
@@ -10,6 +12,19 @@ impl Color {
     }
 }
 
+impl Add for Color {
+    type Output = Color;
+    fn add(self, other: Color) -> Color {
+        Color::new(self.r + other.r, self.g + other.g, self.b + other.b)
+    }
+}
+
+impl Mul<Color> for f64 {
+    type Output = Color;
+    fn mul(self, other: Color) -> Color{
+        Color::new(self*other.r, self*other.g, self*other.b)
+    }
+}
 use std::io::Write;
 
 pub fn write_color(out: &mut impl Write, pixel_color: Color) {

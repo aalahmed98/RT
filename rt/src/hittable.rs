@@ -1,17 +1,21 @@
 use crate::vec3::{Point3, Vec3, dot};
 use crate::ray::Ray;
+use crate::interval::Interval;
+use crate::material::Material;
 
-pub struct HitRecord {
+pub struct HitRecord<'a> {
     pub t: f64,
     pub p: Point3,
     pub normal: Vec3,
     pub front_face: bool,
+    pub mat: &'a dyn Material,
 }
 
-impl HitRecord {
-    pub fn new(t: f64, p: Point3, normal: Vec3) -> HitRecord{
-        HitRecord {p, normal, t, front_face: true}
+impl <'a>HitRecord<'a> {
+    pub fn new(t: f64, p: Point3, normal: Vec3, mat: &'a dyn Material) -> HitRecord<'a>{
+        HitRecord {p, normal, t, front_face: true, mat}
     }
+    
     pub fn set_face_normal(&mut self, r: &Ray) {
         self.front_face = dot(r.direction, self.normal) < 0.0;
         if !self.front_face {
@@ -21,5 +25,5 @@ impl HitRecord {
 }
 
 pub trait Hittable {
-    fn hit(&self, r: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<HitRecord>;
+    fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord>;
 }

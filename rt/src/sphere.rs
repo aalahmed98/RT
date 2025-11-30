@@ -1,20 +1,23 @@
 use crate::vec3::{Point3, dot};
 use crate::hittable::{Hittable, HitRecord};
 use crate::ray::Ray;
+use crate::interval::Interval;
+use crate::material::Material;
 
-pub struct Sphere {
+pub struct Sphere<'a> {
     pub center: Point3,
-    pub radius: f64
+    pub radius: f64,
+    pub mat: Box<dyn Material + 'a>
 }
 
-impl Sphere {
-    pub fn new(center: Point3, radius: f64) -> Sphere {
-        Sphere{center, radius}
+impl <'a>Sphere<'a> {
+    pub fn new(center: Point3, radius: f64, mat: impl Material + 'a) -> Sphere<'a> {
+        Sphere{ center, radius, mat: Box::new(mat) }
     }
 }
 
-impl Hittable for Sphere {
-    fn hit(&self, r: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<HitRecord> {
+impl <'a>Hittable for Sphere<'a> {
+    fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let oc = self.center - r.origin;
         let a = r.direction.length_squared();
         let h = dot(r.direction, oc);
@@ -25,16 +28,16 @@ impl Hittable for Sphere {
         }else {
             let sqrtd = discriminant.sqrt();
             let mut root = (h - sqrtd) / a;
-            if root <= ray_tmin || ray_tmax <= root {
+            if !ray_t.surrounds(root) {
                 root = (h + sqrtd) / a;
-                if root <= ray_tmin || ray_tmax <= root {
-                    return None
+                if !ray_t.surrounds(root) {
+                    return None;
                 }
             }
             let t = root;
             let p = r.at(t);
             let normal = (p - self.center) / self.radius;
-            let mut rec= HitRecord::new(t, p, normal);
+            let mut rec= HitRecord::new(t, p, normal, &*self.mat);
             rec.set_face_normal(r);
             Some(rec)
         }

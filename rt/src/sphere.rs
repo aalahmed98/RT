@@ -1,4 +1,4 @@
-use crate::vec3::{Point3, dot};
+use crate::vec3::{Point3,Vec3};
 use crate::hittable::{Hittable, HitRecord};
 use crate::ray::Ray;
 use crate::interval::Interval;
@@ -20,7 +20,7 @@ impl <'a>Hittable for Sphere<'a> {
     fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let oc = self.center - r.origin;
         let a = r.direction.length_squared();
-        let h = dot(r.direction, oc);
+        let h = Vec3::dot(r.direction, oc);
         let c = oc.length_squared()  - self.radius*self.radius;
         let discriminant = h*h - a*c;
         if discriminant < 0.0 {

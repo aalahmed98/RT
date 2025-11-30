@@ -1,4 +1,4 @@
-use crate::vec3::{Point3, Vec3, dot};
+use crate::vec3::{Point3, Vec3};
 use crate::ray::Ray;
 use crate::interval::Interval;
 use crate::material::Material;
@@ -17,7 +17,7 @@ impl <'a>HitRecord<'a> {
     }
     
     pub fn set_face_normal(&mut self, r: &Ray) {
-        self.front_face = dot(r.direction, self.normal) < 0.0;
+        self.front_face = Vec3::dot(r.direction, self.normal) < 0.0;
         if !self.front_face {
             self.normal = -self.normal;
         }

@@ -1,7 +1,8 @@
 use crate::hittable::HitRecord;
 use crate::color::Color;
 use crate::ray::Ray;
-use crate::vec3::{Vec3, dot};
+use crate::vec3::{Vec3};
+use crate::util::random_f64;
 
 pub trait Material {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
@@ -45,7 +46,7 @@ impl Material for Metal {
         reflected = reflected.unit_vector() + (self.fuzz * Vec3::random_unit_vector());
         let scattered = Ray::new(rec.p, reflected);
         let attentuation = self.albedo;
-        if dot(scattered.direction, rec.normal) > 0.0 {
+        if Vec3::dot(scattered.direction, rec.normal) > 0.0 {
             Some((attentuation, scattered))
         }else {
             None
@@ -62,6 +63,11 @@ impl Dialectric {
     pub fn new(refraction_index: f64) -> Dialectric {
         Dialectric { refraction_index }
     }
+    pub fn reflectance(&self, cosine: f64, refraction_index: f64) -> f64 {
+        let mut r0 = (1.0 - refraction_index) / (1.0 + refraction_index);
+        r0 = r0 * r0;
+        r0 + (1.0 - r0) * ((1.0 - cosine).powf(5.0))
+    }
 }
 
 impl Material for Dialectric {
@@ -73,8 +79,16 @@ impl Material for Dialectric {
             self.refraction_index
         };
         let unit_direction = r_in.direction.unit_vector();
-        let refracted = Vec3::refract(unit_direction, rec.normal, ri);
-        let scattered = Ray::new(rec.p, refracted);
+        let cos_theta = Vec3::dot(-unit_direction, rec.normal).min(1.0);
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+        let cannot_refract = ri * sin_theta > 1.0;
+        let direction;
+        if cannot_refract || self.reflectance(cos_theta, ri) > random_f64() {
+            direction = Vec3::reflect(unit_direction, rec.normal);
+        } else {
+            direction = Vec3::refract(unit_direction, rec.normal, ri);
+        }
+        let scattered = Ray::new(rec.p, direction);
         Some((attentuation, scattered))
     }
 }

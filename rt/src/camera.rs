@@ -5,6 +5,8 @@ use crate::interval::Interval;
 use crate::vec3::{Vec3, Point3};
 use crate::util::random_f64;
 use std::io::Write;
+use rayon::prelude::*;
+use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Default)]
 pub struct Camera {
@@ -48,25 +50,48 @@ impl Camera{
         }
     }
     
-    pub fn render(&mut self, world: &impl Hittable) {
+    pub fn render(&mut self, world: &(impl Hittable + Sync)) {
         self.initialize();
         let mut out = std::io::stdout();
 
         writeln!(out, "P3\n{} {}\n255", self.image_width, self.image_height).unwrap();
 
-        for j in 0..self.image_height {
-            eprint!("\rScanlines remaining: {}", self.image_height - j);
-            for i in 0..self.image_width {
+        // Create a vector of all pixel coordinates
+        let total_pixels = self.image_width * self.image_height;
+        let pixels: Vec<(usize, usize)> = (0..self.image_height)
+            .flat_map(|j| (0..self.image_width).map(move |i| (i, j)))
+            .collect();
 
+        // Create progress bar
+        let pb = ProgressBar::new(total_pixels as u64);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} pixels ({percent}%) {msg}")
+                .unwrap()
+                .progress_chars("#>-")
+        );
+        pb.set_message("Rendering");
+
+        // Process pixels in parallel with progress tracking
+        let pixel_colors: Vec<Color> = pixels
+            .par_iter()
+            .map(|&(i, j)| {
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
-                for sample in 0..self.samples_per_pixel {
+                for _sample in 0..self.samples_per_pixel {
                     let r = self.get_ray(i, j);
                     pixel_color += self.ray_color(&r, self.max_depth, world);
                 }
-                write_color(&mut out, self.pixel_samples_scale * pixel_color);
-            }
+                pb.inc(1);
+                self.pixel_samples_scale * pixel_color
+            })
+            .collect();
+
+        pb.finish_with_message("Done!");
+
+        // Write pixels in order
+        for pixel_color in pixel_colors {
+            write_color(&mut out, pixel_color);
         }
-        eprintln!("\rDone!                      ");
     }
      
     fn initialize(&mut self){

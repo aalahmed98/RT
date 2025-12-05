@@ -6,15 +6,17 @@ use crate::util::random_f64;
 
 pub trait Material: Sync {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
+    fn emission(&self) -> Color;
 } 
 
 pub struct Lambertian {
-    albedo: Color
+    albedo: Color,
+    brightness: f64
 }
 
 impl Lambertian {
-    pub fn new(albedo: Color) -> Lambertian {
-        Lambertian { albedo }
+    pub fn new(albedo: Color, brightness: f64) -> Lambertian {
+        Lambertian { albedo, brightness }
     }
 }
 
@@ -28,16 +30,21 @@ impl Material for Lambertian {
         let attentuation = self.albedo;
         Some((attentuation, scattered))
     }
+    
+    fn emission(&self) -> Color {
+        self.brightness * self.albedo
+    }
 }
 
 pub struct Metal {
     albedo: Color,
-    fuzz: f64
+    fuzz: f64,
+    brightness: f64
 }
 
 impl Metal {
-    pub fn new(albedo: Color, fuzz: f64) -> Metal {
-        Metal { albedo, fuzz: if fuzz < 1.0 { fuzz} else {1.0} }
+    pub fn new(albedo: Color, fuzz: f64, brightness: f64) -> Metal {
+        Metal { albedo, fuzz: if fuzz < 1.0 { fuzz} else {1.0}, brightness }
     }
 }
 impl Material for Metal {
@@ -53,15 +60,20 @@ impl Material for Metal {
         }
         
     }
+    
+    fn emission(&self) -> Color {
+        self.brightness * self.albedo
+    }
 }
 
 pub struct Dialectric {
-    refraction_index: f64
+    refraction_index: f64,
+    brightness: f64
 }
 
 impl Dialectric {
-    pub fn new(refraction_index: f64) -> Dialectric {
-        Dialectric { refraction_index }
+    pub fn new(refraction_index: f64, brightness: f64) -> Dialectric {
+        Dialectric { refraction_index, brightness }
     }
     pub fn reflectance(&self, cosine: f64, refraction_index: f64) -> f64 {
         let mut r0 = (1.0 - refraction_index) / (1.0 + refraction_index);
@@ -90,5 +102,9 @@ impl Material for Dialectric {
         }
         let scattered = Ray::new(rec.p, direction);
         Some((attentuation, scattered))
+    }
+    
+    fn emission(&self) -> Color {
+        self.brightness * Color::new(1.0, 1.0, 1.0)
     }
 }

@@ -4,6 +4,7 @@ use crate::ray::Ray;
 use crate::interval::Interval;
 use crate::vec3::{Vec3, Point3};
 use crate::util::random_f64;
+use crate::light::Light;
 use std::io::Write;
 use rayon::prelude::*;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -50,7 +51,7 @@ impl Camera{
         }
     }
     
-    pub fn render(&mut self, world: &(impl Hittable + Sync)) {
+    pub fn render(&mut self, world: &(impl Hittable + Sync), lights: &[Light]) {
         self.initialize();
         let mut out = std::io::stdout();
 
@@ -79,7 +80,7 @@ impl Camera{
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
                 for _sample in 0..self.samples_per_pixel {
                     let r = self.get_ray(i, j);
-                    pixel_color += self.ray_color(&r, self.max_depth, world);
+                    pixel_color += self.ray_color(&r, self.max_depth, world, lights);
                 }
                 pb.inc(1);
                 self.pixel_samples_scale * pixel_color
@@ -150,18 +151,91 @@ impl Camera{
     }
 
     
-    fn ray_color(&self, r: &Ray, depth: usize, world: &impl Hittable) -> Color {
+    fn ray_color(&self, r: &Ray, depth: usize, world: &impl Hittable, lights: &[Light]) -> Color {
         if depth == 0 {
             return Color::new(0.0, 0.0, 0.0)
         }
+        
         if let Some(rec) = world.hit(r, Interval::new(0.001, f64::INFINITY)) {
-
-            if let Some((attentuation, scattered)) = rec.mat.scatter(r, &rec) {
-                return attentuation * self.ray_color(&scattered, depth-1, world);
+            // Add object's own emission (brightness)
+            let emission = rec.mat.emission();
+            
+            // Continue with material scattering
+            if let Some((attenuation, scattered)) = rec.mat.scatter(r, &rec) {
+                // Check if this is a transparent material (glass)
+                // Transparent materials have white attenuation and no emission
+                let is_transparent = (attenuation.r - 1.0).abs() < 0.001 &&
+                                     (attenuation.g - 1.0).abs() < 0.001 &&
+                                     (attenuation.b - 1.0).abs() < 0.001 &&
+                                     (emission.r + emission.g + emission.b) < 0.001;
+                
+                if is_transparent {
+                    // For transparent materials (glass), skip direct lighting
+                    // Only show refracted/reflected light
+                    let indirect_light = self.ray_color(&scattered, depth-1, world, lights);
+                    return attenuation * indirect_light;
+                } else {
+                    // For opaque materials, calculate direct lighting
+                    let mut direct_light = Color::new(0.0, 0.0, 0.0);
+                    
+                    for light in lights {
+                        let light_dir = (light.position - rec.p).unit_vector();
+                        let distance_to_light = (light.position - rec.p).length();
+                        
+                        // Cast shadow ray
+                        let shadow_ray = Ray::new(rec.p + 0.001 * rec.normal, light_dir);
+                        let shadow_hit = world.hit(&shadow_ray, Interval::new(0.001, distance_to_light));
+                        
+                        let cos_theta = Vec3::dot(rec.normal, light_dir).max(0.0);
+                        
+                        if let Some(shadow_rec) = shadow_hit {
+                            // Object is blocking, but check if it's bright enough to emit light
+                            let blocker_emission = shadow_rec.mat.emission();
+                            let emission_strength = (blocker_emission.r + blocker_emission.g + blocker_emission.b) / 3.0;
+                            
+                            // Brighter objects cast stronger shadows but also emit more light
+                            // Reduce shadow strength based on blocker's brightness
+                            let shadow_factor = (1.0 - emission_strength.min(1.0)).max(0.0);
+                            let light_contribution = shadow_factor * cos_theta * light.intensity * light.color;
+                            direct_light = direct_light + light_contribution;
+                            
+                            // Also add emission from the blocking object
+                            direct_light = direct_light + 0.1 * blocker_emission;
+                        } else {
+                            // No occlusion - full light
+                            let light_contribution = cos_theta * light.intensity * light.color;
+                            direct_light = direct_light + light_contribution;
+                        }
+                    }
+                    
+                    let indirect_light = self.ray_color(&scattered, depth-1, world, lights);
+                    return emission + direct_light * attenuation + attenuation * indirect_light;
+                }
             } else {
-                return Color::new(0.0, 0.0, 0.0);
+                // Material doesn't scatter (shouldn't happen, but handle it)
+                // Calculate direct lighting for non-scattering materials
+                let mut direct_light = Color::new(0.0, 0.0, 0.0);
+                
+                for light in lights {
+                    let light_dir = (light.position - rec.p).unit_vector();
+                    let distance_to_light = (light.position - rec.p).length();
+                    
+                    let shadow_ray = Ray::new(rec.p + 0.001 * rec.normal, light_dir);
+                    let shadow_hit = world.hit(&shadow_ray, Interval::new(0.001, distance_to_light));
+                    
+                    let cos_theta = Vec3::dot(rec.normal, light_dir).max(0.0);
+                    
+                    if shadow_hit.is_none() {
+                        let light_contribution = cos_theta * light.intensity * light.color;
+                        direct_light = direct_light + light_contribution;
+                    }
+                }
+                
+                return emission + direct_light;
             }
         }
+        
+        // Background color (sky)
         let unit_direction = r.direction.unit_vector();
         let a = 0.5 * (unit_direction.y + 1.0);
         (1.0 - a)*Color::new(1.0, 1.0, 1.0) + a*Color::new(0.5, 0.7, 1.0)

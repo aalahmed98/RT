@@ -179,28 +179,30 @@ impl Camera{
                     let mut direct_light = Color::new(0.0, 0.0, 0.0);
                     
                     for light in lights {
-                        let light_dir = (light.position - rec.p).unit_vector();
-                        let distance_to_light = (light.position - rec.p).length();
+                        // Offset point to avoid self-intersection
+                        let offset_point = rec.p + 0.001 * rec.normal;
+                        let light_dir = (light.position - offset_point).unit_vector();
+                        let distance_to_light = (light.position - offset_point).length();
                         
                         // Cast shadow ray
-                        let shadow_ray = Ray::new(rec.p + 0.001 * rec.normal, light_dir);
+                        let shadow_ray = Ray::new(offset_point, light_dir);
                         let shadow_hit = world.hit(&shadow_ray, Interval::new(0.001, distance_to_light));
                         
                         let cos_theta = Vec3::dot(rec.normal, light_dir).max(0.0);
                         
                         if let Some(shadow_rec) = shadow_hit {
-                            // Object is blocking, but check if it's bright enough to emit light
+                            // Object is blocking light - create shadow
+                            // All objects create the same shadow darkness (no direct light from this source)
+                            // The blocker's emission can add some light to the shadow area
                             let blocker_emission = shadow_rec.mat.emission();
                             let emission_strength = (blocker_emission.r + blocker_emission.g + blocker_emission.b) / 3.0;
                             
-                            // Brighter objects cast stronger shadows but also emit more light
-                            // Reduce shadow strength based on blocker's brightness
-                            let shadow_factor = (1.0 - emission_strength.min(1.0)).max(0.0);
-                            let light_contribution = shadow_factor * cos_theta * light.intensity * light.color;
-                            direct_light = direct_light + light_contribution;
-                            
-                            // Also add emission from the blocking object
-                            direct_light = direct_light + 0.1 * blocker_emission;
+                            // Add a small amount of emission from the blocking object to the shadow area
+                            // This makes glowing objects cast slightly lighter shadows
+                            if emission_strength > 0.05 {
+                                direct_light = direct_light + 0.15 * blocker_emission;
+                            }
+                            // No direct light contribution from the light source (shadow)
                         } else {
                             // No occlusion - full light
                             let light_contribution = cos_theta * light.intensity * light.color;
@@ -217,10 +219,12 @@ impl Camera{
                 let mut direct_light = Color::new(0.0, 0.0, 0.0);
                 
                 for light in lights {
-                    let light_dir = (light.position - rec.p).unit_vector();
-                    let distance_to_light = (light.position - rec.p).length();
+                    // Offset point to avoid self-intersection
+                    let offset_point = rec.p + 0.001 * rec.normal;
+                    let light_dir = (light.position - offset_point).unit_vector();
+                    let distance_to_light = (light.position - offset_point).length();
                     
-                    let shadow_ray = Ray::new(rec.p + 0.001 * rec.normal, light_dir);
+                    let shadow_ray = Ray::new(offset_point, light_dir);
                     let shadow_hit = world.hit(&shadow_ray, Interval::new(0.001, distance_to_light));
                     
                     let cos_theta = Vec3::dot(rec.normal, light_dir).max(0.0);

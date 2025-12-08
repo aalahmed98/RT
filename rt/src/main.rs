@@ -175,8 +175,8 @@ fn main() {
         ground
     ));
     
-    // One sphere - same position as Scene 3
-    let sphere_mat = Lambertian::new(Color::new(0.8, 0.2, 0.2), 0.5);
+    // One sphere - Mirror (reflective)
+    let sphere_mat = Metal::new(Color::new(0.9, 0.9, 0.9), 0.0, 0.0);  // Perfect mirror
     world.add(Sphere::new(Point3::new(-2.5, 1.0, 0.0), 0.8, sphere_mat));
     
     // One cube - same position as Scene 3
@@ -194,7 +194,7 @@ fn main() {
     // Same light sources as Scene 3
     let lights = vec![
         Light::new(Point3::new(5.0, 6.0, 3.0), Color::new(1.0, 1.0, 1.0), 1.2),
-        Light::new(Point3::new(-4.0, 4.0, 2.0), Color::new(1.0, 0.95, 0.9), 0.8),
+        //Light::new(Point3::new(-4.0, 4.0, 2.0), Color::new(1.0, 0.95, 0.9), 0.8),
     ];
     
     let mut cam = Camera::new();

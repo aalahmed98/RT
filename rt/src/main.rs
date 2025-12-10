@@ -166,7 +166,7 @@ fn main() {
     // ============================================================================
     // Requirements: Same objects as Scene 3, but camera in different position
     // Uncomment this section to render Scene 4
- 
+    /*
     // Flat plane (ground) - same as Scene 3
     let ground = Lambertian::new(Color::new(0.3, 0.3, 0.3), 0.0);
     world.add(Plane::new(
@@ -209,6 +209,47 @@ fn main() {
     cam.vup = Vec3::new(0.0, 1.0, 0.0);
     cam.defocus_angle = 0.0;
     cam.focus_dist = 12.0;  // Increased focus distance
+
+    cam.render(&world, &lights);
+    */
+    
+    // ============================================================================
+    // SCENE 5: TWO CYLINDERS AT DIFFERENT ANGLES
+    // ============================================================================
+    // Two cylinders with different colors, positioned at different angles
+    
+    // Ground plane
+    let ground = Lambertian::new(Color::new(0.3, 0.3, 0.3), 0.0);
+    world.add(Plane::new(
+        Point3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        ground
+    ));
+    
+    // First cylinder - Red/Orange, positioned on the left, taller
+    let cylinder1_mat = Lambertian::new(Color::new(0.8, 0.3, 0.2), 0.3);
+    world.add(Cylinder::new(Point3::new(-2.0, 1.5, 0.0), 0.5, 3.0, cylinder1_mat));
+    
+    // Second cylinder - Blue/Purple, positioned on the right, shorter and wider
+    let cylinder2_mat = Lambertian::new(Color::new(0.2, 0.4, 0.9), 0.35);
+    world.add(Cylinder::new(Point3::new(2.0, 1.0, 0.0), 0.7, 2.0, cylinder2_mat));
+    
+    // Light source positioned to show shadows clearly
+    let lights = vec![
+        Light::new(Point3::new(5.0, 6.0, 3.0), Color::new(1.0, 1.0, 1.0), 1.2),
+    ];
+    
+    let mut cam = Camera::new();
+    cam.aspect_ratio = 16.0/9.0;
+    cam.image_width = 600;
+    cam.samples_per_pixel = 500;
+    cam.max_depth = 50;
+    cam.vfov = 30.0;
+    cam.lookfrom = Point3::new(0.0, 3.0, 8.0);
+    cam.lookat = Point3::new(0.0, 1.0, 0.0);
+    cam.vup = Vec3::new(0.0, 1.0, 0.0);
+    cam.defocus_angle = 0.0;
+    cam.focus_dist = 10.0;
 
     cam.render(&world, &lights);
     
